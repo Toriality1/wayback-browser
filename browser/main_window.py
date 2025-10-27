@@ -1,6 +1,7 @@
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import QMainWindow, QStatusBar, QProgressBar
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtCore import QUrl
+from PyQt6.QtCore import QUrl, Qt
 import sys
 from .web_page import CustomWebPage
 from .toolbar import NavigationToolbar
@@ -35,12 +36,33 @@ class MainWindow(QMainWindow):
         self.view.loadProgress.connect(self.on_load_progress)
         self.view.loadFinished.connect(self.on_load_finished)
 
+        # --- Keyboard shortcuts ---
+        QShortcut(Qt.Key.Key_F5, self, self.view.reload)
+        QShortcut(Qt.Key.Key_F11, self, self.toggle_fullscreen)
+        QShortcut(QKeySequence("Ctrl+R"), self, self.view.reload)
+        QShortcut(QKeySequence("Ctrl+L"), self, self.focus_url_bar)
+        QShortcut(QKeySequence("Alt+Left"), self, self.view.back)
+        QShortcut(QKeySequence("Alt+Right"), self, self.view.forward)
+        QShortcut(QKeySequence("Alt+Home"), self, self.go_home)
+        QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
+
         # --- Window setup ---
         self.setWindowTitle("Wayback Browser")
         self.resize(1280, 720)
 
         # Load homepage
         self.go_home()
+
+    # --- Shortcut handlers ---
+    def focus_url_bar(self):
+        self.nav_bar.url_bar.setFocus()
+        self.nav_bar.url_bar.selectAll()
+
+    def toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     # --- Page navigation ---
     def go_home(self):
