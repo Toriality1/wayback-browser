@@ -1,5 +1,6 @@
 from PyQt6.QtGui import QKeySequence, QShortcut
-from PyQt6.QtWidgets import QMainWindow, QStatusBar, QProgressBar
+from PyQt6.QtWebEngineCore import QWebEnginePage
+from PyQt6.QtWidgets import QDockWidget, QMainWindow, QStatusBar, QProgressBar
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtCore import QUrl, Qt
 import sys
@@ -36,6 +37,20 @@ class MainWindow(QMainWindow):
         self.view.loadProgress.connect(self.on_load_progress)
         self.view.loadFinished.connect(self.on_load_finished)
 
+        # --- DevTools ---
+        self.dev_tools = QWebEngineView()
+        self.dev_tools_page = QWebEnginePage()
+        self.dev_tools.setPage(self.dev_tools_page)
+        self.dev_tools.show()
+        self.page.setDevToolsPage(self.dev_tools_page)
+        self.dev_dock = QDockWidget("Developer Tools", self)
+        self.dev_dock.setWidget(self.dev_tools)
+        self.dev_dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dev_dock)
+        self.resizeDocks([self.dev_dock], [400], Qt.Orientation.Horizontal)
+        self.dev_dock.hide()
+
+
         # --- Keyboard shortcuts ---
         QShortcut(Qt.Key.Key_F5, self, self.view.reload)
         QShortcut(Qt.Key.Key_F11, self, self.toggle_fullscreen)
@@ -45,15 +60,20 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Alt+Right"), self, self.view.forward)
         QShortcut(QKeySequence("Alt+Home"), self, self.go_home)
         QShortcut(QKeySequence("Ctrl+Q"), self, self.close)
+        QShortcut(QKeySequence("Ctrl+Shift+I"), self, self.toggle_devtools)
 
         # --- Window setup ---
         self.setWindowTitle("Wayback Browser")
         self.resize(1280, 720)
 
+
         # Load homepage
         self.go_home()
 
     # --- Shortcut handlers ---
+    def toggle_devtools(self):
+        self.dev_dock.setVisible(not self.dev_dock.isVisible())
+
     def focus_url_bar(self):
         self.nav_bar.url_bar.setFocus()
         self.nav_bar.url_bar.selectAll()
