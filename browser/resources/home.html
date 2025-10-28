@@ -2,16 +2,82 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Welcome to Wayback Browser</title>
+    <title>Wayback Browser Home</title>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
     <style>
+      :root {
+        --a: oklch(87.4% 0.0347 221.4);
+        --b: oklch(87.4% 0.0782 211.2);
+        --c: oklch(93.3% 0.008 211.2);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
       body {
-        background-color: black;
-        color: white;
+        height: 100%;
+      }
+      body {
+        font-family: sans-serif;
+        background: radial-gradient(
+          circle at center,
+          var(--a),
+          var(--b),
+          var(--c)
+        );
+        background-size: 100% 120%;
+        animation: gradientShift 10s infinite alternate;
+        overflow: hidden;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+      }
+      @keyframes gradientShift {
+        from {
+          background-position: 0 0;
+        }
+        to {
+          background-position: 100% 100%;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>Hello, world!</h1>
+    <center>
+      <h1>Wayback Browser: Home</h1>
+      <p>A browser for Wayback Machine</p>
+    </center>
+
+    <script>
+      let bridge = null;
+
+      new QWebChannel(qt.webChannelTransport, function (channel) {
+        bridge = channel.objects.bridge;
+      });
+
+      document.getElementById("loadBtn")?.addEventListener("click", () => {
+        const url = document.getElementById("urlInput")?.value.trim();
+        const year = document.getElementById("yearInput")?.value;
+        const status = document.getElementById("statusText");
+
+        if (!url) {
+          status.textContent = "⚠️ Please enter a valid URL.";
+          return;
+        }
+
+        status.textContent = `🔍 Requesting Wayback snapshot from ${year}...`;
+
+        if (bridge?.loadSnapshot) {
+          bridge.loadSnapshot(url, year);
+        } else {
+          status.textContent =
+            "❌ Bridge not ready — ensure QWebChannel is connected.";
+        }
+      });
+    </script>
   </body>
 </html>

@@ -8,6 +8,7 @@ from .web_page import CustomWebPage
 from .toolbar import NavigationToolbar
 from .shortcuts import register_shortcuts
 from .devtools import create_devtools
+from .web_page import WaybackWorker
 
 
 class MainWindow(QMainWindow):
@@ -21,6 +22,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Wayback Browser")
         self.resize(1280, 720)
         self.go_home()
+
+        self._wayyback_fetch_in_progress = False
 
     # ==========================================================
     # UI Setup
@@ -67,16 +70,40 @@ class MainWindow(QMainWindow):
         else:
             self.view.setHtml("<h1>Home page not found</h1>")
 
+
     def navigate_to_url(self):
         url = self.nav_bar.url_bar.text().strip()
         if not url:
             return
         if not url.startswith(("http://", "https://")):
             url = "http://" + url
-        self.view.setUrl(QUrl(url))
+
+        self._wayback_fetch_in_progress = True
+        self.nav_bar.url_bar.setEnabled(False)
+        self.status_bar.showMessage("Fetching Wayback snapshot...")
+
+        worker = WaybackWorker(url)
+        # Connect to CustomWebPage._load_wayback_url
+        worker.signals.finished.connect(
+            lambda wayback_url: self.page._load_wayback_url(wayback_url, url)
+        )
+        # Connect MainWindow signal to reset state
+        self.page.wayback_ready.connect(self._on_wayback_ready)
+        self.page.thread_pool.start(worker)
+
+    def _on_wayback_ready(self):
+        self._wayback_fetch_in_progress = False
+        self.nav_bar.url_bar.setEnabled(True)
+        self.status_bar.showMessage("Snapshot loaded", 2000)
+        # Disconnect to avoid multiple triggers
+        self.page.wayback_ready.disconnect(self._on_wayback_ready)
+
 
     def update_url_bar(self, url: QUrl):
-        self.nav_bar.url_bar.setText(url.toString())
+        if hasattr(self.page, "current_display_url") and self.page.current_display_url:
+            self.nav_bar.url_bar.setText(self.page.current_display_url)
+        else:
+            self.nav_bar.url_bar.setText(url.toString())
 
     # ==========================================================
     # Loading Status
@@ -91,6 +118,9 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage(f"Loading... {progress}%")
 
     def on_load_finished(self, ok: bool):
+        if self._wayyback_fetch_in_progress:
+            # Ignore intermediate failures while fetching wayback
+            return
         self.progress_bar.setVisible(False)
         if ok:
             self.status_bar.showMessage("Page loaded successfully", 3000)
